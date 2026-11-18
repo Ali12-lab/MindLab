@@ -104,4 +104,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "build-${{ github.run_number }}" MindLab.apk --title "Mind Lab build ${{ github.run_number }}" --notes "Download MindLab.apk on your Android phone and install it." --latest
+
         
