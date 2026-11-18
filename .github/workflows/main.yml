@@ -1,3 +1,4 @@
+
 name: Build Mind Lab APK
 
 on:
@@ -14,6 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check signing secret
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then echo "HAS_KEY=true" >> "$GITHUB_ENV"; else echo "HAS_KEY=false" >> "$GITHUB_ENV"; fi
 
       - uses: actions/setup-node@v4
         with:
@@ -71,7 +78,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          if [ -n "${{ secrets.KEYSTORE_B64 }}" ]; then
+          if [ "$HAS_KEY" = "true" ]; then
             ./gradlew assembleRelease --no-daemon
           else
             echo "No KEYSTORE_B64 secret found: building a debug APK for testing."
@@ -79,7 +86,7 @@ jobs:
           fi
 
       - name: Sign release APK (only if KEYSTORE_B64 is set)
-        if: ${{ secrets.KEYSTORE_B64 != '' }}
+        if: env.HAS_KEY == 'true'
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
           KS_PASS: ${{ secrets.KEYSTORE_PASS }}
@@ -92,7 +99,7 @@ jobs:
           "$BT/apksigner" verify MindLab.apk
 
       - name: Copy debug APK (only if no secret)
-        if: ${{ secrets.KEYSTORE_B64 == '' }}
+        if: env.HAS_KEY != 'true'
         run: cp android/app/build/outputs/apk/debug/app-debug.apk MindLab.apk
 
       - uses: actions/upload-artifact@v4
@@ -104,5 +111,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "build-${{ github.run_number }}" MindLab.apk --title "Mind Lab build ${{ github.run_number }}" --notes "Download MindLab.apk on your Android phone and install it." --latest
-
         
